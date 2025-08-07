@@ -13,7 +13,6 @@
         class="message-item"
         :class="[`message-from-` + message.role]"
       >
-        <div class="avatar">{{ message.role === 'user' ? 'User' : 'AI' }}</div>
         <div class="message-content">{{ message.content }}</div>
       </div>
     </div>
@@ -54,50 +53,48 @@ watch(activeChatId, scrollToBottom)
   overflow-y: auto;
   padding: 24px;
 
-  .message-item {
+  .message-list {
     display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
+    flex-direction: column;
+    gap: 24px;
 
-    .avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background-color: var(--primary-color);
-      color: #fff;
+    .message-item {
+      display: flex;
+      max-width: 80%;
+      margin-bottom: 24px;
+
+      .message-content {
+        background-color: #fff;
+        padding: 12px 16px;
+        border-radius: 12px;
+        white-space: pre-wrap;
+        line-height: 1.6;
+        word-break: break-word;
+      }
+    }
+
+    .message-from-user {
+      align-self: flex-end;
+      .message-content {
+        background-color: #e1ffc7;
+      }
+    }
+
+    .message-from-assistant {
+      align-self: flex-start;
+      .message-content {
+        background-color: #fff;
+        color: var(--text-color);
+      }
+    }
+
+    .no-active-chat {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
-      flex-shrink: 0;
+      height: 100%;
+      color: var(--text-color-secondary);
     }
-
-    .message-content {
-      background-color: #fff;
-      padding: 12px;
-      border-radius: 8px;
-      max-width: 80%;
-      white-space: pre-wrap;
-      line-height: 1.6;
-    }
-  }
-
-  .message-from-user {
-    flex-direction: row-reverse; /* 用户消息靠右 */
-    .avatar {
-      background-color: #67c23a;
-    }
-    .message-content {
-      background-color: #e1ffc7;
-    }
-  }
-
-  .no-active-chat {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--text-color-secondary);
   }
 }
 </style>

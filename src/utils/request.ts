@@ -24,7 +24,7 @@ const statusMap = new Map([
 
 const service: CustomAxiosInstance = axios.create({
   baseURL: '/api',
-  timeout: 10000,
+  timeout: 90000,
 })
 
 service.interceptors.request.use(
@@ -47,6 +47,11 @@ service.interceptors.response.use(
     return response.data
   },
   async (error) => {
+    if (axios.isCancel(error)) {
+      console.log('Request canceled:', error.message)
+      return Promise.reject(error)
+    }
+
     const originalRequest = error.config
     const response = error.response
     if (originalRequest && (!response || response.status === 503)) {
@@ -63,17 +68,19 @@ service.interceptors.response.use(
         return service(originalRequest)
       }
     }
-    let message = ''
-    const status = error.response.status
-    if (statusMap.get(status)) {
-      message = statusMap.get(status)!
-    } else {
-      message = '请求失败'
+    if (response) {
+      let message = ''
+      const status = response.status
+      if (statusMap.get(status)) {
+        message = statusMap.get(status)!
+      } else {
+        message = '请求失败'
+      }
+      ElMessage({
+        type: 'error',
+        message,
+      })
     }
-    ElMessage({
-      type: 'error',
-      message,
-    })
     return Promise.reject(error)
   }
 )

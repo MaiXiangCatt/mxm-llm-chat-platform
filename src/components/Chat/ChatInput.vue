@@ -23,11 +23,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useChatsStore } from '@/stores/chats/chats'
+import { useSettingStore } from '@/stores/setting/setting'
 import { Position } from '@element-plus/icons-vue'
 import { messageHandler } from '@/utils/message'
-import { fetchChatCompletion } from '@/utils/api'
+import { fetchChatCompletion, fetchChatCompletionStream } from '@/utils/api'
 
 const chatsStore = useChatsStore()
+const settingStore = useSettingStore()
 
 const inputValue = ref('')
 
@@ -42,9 +44,14 @@ async function handleSend(content: string) {
     chatsStore.toggleLoading(true)
 
     const messages = chatsStore.currentMessages.map(({ role, content }) => ({ role, content }))
-    const response = await fetchChatCompletion(messages)
 
-    await messageHandler.handleUnstreamResponse(response, updateCallback)
+    if (settingStore.settings.stream) {
+      const response = await fetchChatCompletionStream(messages)
+      await messageHandler.handleResponse(response, settingStore.settings.stream, updateCallback)
+    } else {
+      const response = await fetchChatCompletion(messages)
+      await messageHandler.handleResponse(response, settingStore.settings.stream, updateCallback)
+    }
   } catch (error) {
     console.error('message send error:', error)
     chatsStore.updateLastMessage('哦豁，发送失败了')

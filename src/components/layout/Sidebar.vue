@@ -82,25 +82,51 @@
   <!-- 设置对话框 -->
   <el-dialog
     v-model="settingDialogVisible"
-    title="API设置"
-    width="400px"
+    title="设置"
+    width="500"
   >
-    <el-input v-model="temApiKey"></el-input>
+    <el-form :model="customSettings">
+      <el-form-item label="apiKey">
+        <el-input
+          v-model="customSettings.apiKey"
+          placeholder="请输入您的apiKey"
+        />
+      </el-form-item>
+      <el-form-item>
+        <template #label>
+          <div class="setting-label">
+            <span>流式输出</span>
+            <el-tooltip
+              content="开启后, AI的回复将会像打字机一样逐字输出"
+              placement="top"
+            >
+              <el-icon>
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
+        </template>
+        <el-switch v-model="customSettings.stream" />
+      </el-form-item>
+    </el-form>
+
     <template #footer>
-      <el-button @click="settingDialogVisible = false">取消</el-button>
-      <el-button
-        type="primary"
-        @click="saveSetting"
-        >确定</el-button
-      >
+      <div class="dialog-footer">
+        <el-button @click="settingDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          @click="saveSetting"
+          >确定</el-button
+        >
+      </div>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { useChatsStore } from '@/stores/chats/chats'
-import { Delete, Edit, EditPen, More, Setting } from '@element-plus/icons-vue'
-import { ref } from 'vue'
+import { Delete, Edit, EditPen, More, Setting, QuestionFilled } from '@element-plus/icons-vue'
+import { reactive, ref } from 'vue'
 import type { Chat } from '@/stores/chats/types'
 import { useSettingStore } from '@/stores/setting/setting'
 
@@ -117,6 +143,10 @@ const renameDialogInputVal = ref('')
 const editingChat = ref<Chat | void>(void 0)
 const settingDialogVisible = ref(false)
 const temApiKey = ref('')
+const customSettings = reactive({
+  apiKey: '',
+  stream: false,
+})
 
 //打开重命名对话框
 function openRenameDialog(chat: Chat) {
@@ -144,12 +174,13 @@ function handleCommand(command: dropdownItemCommand) {
 
 //api等设置
 function openSettingDialog() {
-  temApiKey.value = settingStore.settings.apiKey
+  customSettings.apiKey = settingStore.settings.apiKey
+  customSettings.stream = settingStore.settings.stream
   settingDialogVisible.value = true
 }
 
 function saveSetting() {
-  settingStore.updatesSettings({ apiKey: temApiKey.value })
+  settingStore.updatesSettings(customSettings)
   settingDialogVisible.value = false
 }
 </script>
