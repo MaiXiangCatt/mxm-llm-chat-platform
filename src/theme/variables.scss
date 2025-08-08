@@ -14,3 +14,9 @@
   --code-text: #383a42;
   --code-header-button-hover-bg: #e5e6e8;
 }
+
+.code-block {
+  pre.hljs {
+    color: var(--code-text);
+  }
+}

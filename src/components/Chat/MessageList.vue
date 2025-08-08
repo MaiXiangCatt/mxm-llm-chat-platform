@@ -13,7 +13,10 @@
         class="message-item"
         :class="[`message-from-` + message.role]"
       >
-        <div class="message-content">{{ message.content }}</div>
+        <div
+          class="message-content"
+          v-html="renderMarkdown(message.content)"
+        ></div>
       </div>
     </div>
     <div
@@ -26,12 +29,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch } from 'vue'
+import { ref, nextTick, watch, computed } from 'vue'
 import { useChatsStore } from '@/stores/chats/chats'
 import { storeToRefs } from 'pinia'
+import { renderMarkdown } from '@/utils/markdown'
 
 const chatsStore = useChatsStore()
-const { activeChat, activeChatId } = storeToRefs(chatsStore)
+const { activeChat, activeChatId, currentMessages } = storeToRefs(chatsStore)
 
 const scrollContainerRef = ref<HTMLDivElement | null>(null)
 
