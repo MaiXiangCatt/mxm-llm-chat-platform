@@ -1,4 +1,5 @@
 import type { Role, Message, ChatCompletionResponse, UpdateCallback } from '@/stores/chats/types'
+import { parse } from 'vue/compiler-sfc'
 
 export const messageHandler = {
   formatMessage(role: Role, content: string, reasoning_content?: string): Message {
@@ -28,13 +29,25 @@ export const messageHandler = {
   //   let accumulatedContent = ''
   //   let accumulatedReasoningContent = ''
   //   const contentQueue: string[] = []
+  //   const reasoningQueue: string[] = []
+  //   let typingTimer: number | null = null
 
-  //   const intervalId = setInterval(() => {
-  //     if (contentQueue.length === 0) return
-  //     const batch = contentQueue.splice(0)
-  //     accumulatedContent += batch.join('')
-  //     updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
-  //   }, 20)
+  //   function startTypingTimer() {
+  //     if (typingTimer) return
+  //     typingTimer = window.setInterval(() => {
+  //       if (reasoningQueue.length) {
+  //         accumulatedReasoningContent += reasoningQueue.shift()
+  //       }
+  //       if (contentQueue.length) {
+  //         accumulatedContent += contentQueue.shift()
+  //       }
+  //       updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
+  //       if (!reasoningQueue.length && !contentQueue.length) {
+  //         clearInterval(typingTimer!)
+  //         typingTimer = null
+  //       }
+  //     }, 18)
+  //   }
 
   //   try {
   //     while (true) {
@@ -51,23 +64,31 @@ export const messageHandler = {
   //           const content = parsedData.choices[0].delta.content || ''
   //           const reasoning_content = parsedData.choices[0].delta.reasoning_content || ''
 
+  //           if (reasoning_content) {
+  //             reasoningQueue.push(...reasoning_content.split(''))
+  //             startTypingTimer()
+  //           }
   //           if (content) {
   //             contentQueue.push(...content.split(''))
+  //             startTypingTimer()
   //           }
-
-  //           accumulatedReasoningContent += reasoning_content
   //         }
   //       }
   //     }
   //   } finally {
-  //     clearInterval(intervalId)
-  //     if (contentQueue.length > 0) {
+  //     if (typingTimer) {
+  //       clearInterval(typingTimer)
+  //       typingTimer = null
+  //     }
+  //     if (contentQueue.length || reasoningQueue.length) {
+  //       accumulatedReasoningContent += reasoningQueue.join('')
   //       accumulatedContent += contentQueue.join('')
   //       updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
   //     }
   //   }
   // },
 
+  // rAF方案
   async handleStreamResponse(response: Response, updateCallback: UpdateCallback) {
     const reader = response.body?.getReader()
     if (!reader) {
@@ -76,21 +97,36 @@ export const messageHandler = {
 
     const decoder = new TextDecoder()
     let accumulatedContent = ''
+    let accumulatedReasoningContent = ''
     const contentQueue: string[] = []
-    let isRendering = false
+    const reasoningQueue: string[] = []
     let animationFrameId: number | null = null
 
-    const render = () => {
-      if (contentQueue.length === 0) {
-        isRendering = false
+    let lastTime = 0
+    const RENDERSPEED = 16
+    const render = (timeStamp: number) => {
+      if (contentQueue.length === 0 && reasoningQueue.length === 0) {
+        animationFrameId = null
         return
       }
-      isRendering = true
-      const batch = contentQueue.shift()
-      accumulatedContent += batch
-      updateCallback(accumulatedContent, 0)
+      if (timeStamp - lastTime >= RENDERSPEED) {
+        if (reasoningQueue.length > 0) {
+          accumulatedReasoningContent += reasoningQueue.shift()
+        }
+        if (contentQueue.length > 0) {
+          accumulatedContent += contentQueue.shift()
+        }
+        updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
+        lastTime = timeStamp
+      }
 
       animationFrameId = requestAnimationFrame(render)
+    }
+
+    const ensureRendering = () => {
+      if (animationFrameId === null) {
+        animationFrameId = requestAnimationFrame(render)
+      }
     }
 
     try {
@@ -106,11 +142,15 @@ export const messageHandler = {
           if (line.startsWith('data: ')) {
             const parsedData = JSON.parse(line.substring(6))
             const content = parsedData.choices[0].delta.content || ''
+            const reasoningContent = parsedData.choices[0].delta.reasoning_content || ''
 
             if (content) {
               contentQueue.push(...content.split(''))
-              !isRendering && render()
             }
+            if (reasoningContent) {
+              reasoningQueue.push(...reasoningContent.split(''))
+            }
+            ensureRendering()
           }
         }
       }
@@ -118,13 +158,21 @@ export const messageHandler = {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId)
       }
-      if (contentQueue.length > 0) {
+      if (contentQueue.length > 0 || reasoningQueue.length > 0) {
         accumulatedContent += contentQueue.join('')
-        updateCallback(accumulatedContent, 0, '')
+        accumulatedReasoningContent += reasoningQueue.join('')
+        updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
       }
     }
   },
 
+  //渐显
+  // async handleStraemResponse(response: Response, updateCallback: UpdateCallback) {
+  //   const reader = response.body!.getReader()
+  //   if (!reader) throw new Error('reader is null')
+
+  //   const decoder = new TextDecoder()
+  // },
   async handleResponse(response: any, isStream: boolean, updateCallback: UpdateCallback) {
     if (isStream) {
       await this.handleStreamResponse(response, updateCallback)

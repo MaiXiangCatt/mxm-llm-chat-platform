@@ -56,4 +56,9 @@ export interface ChatCompletionResponse {
   speed?: string
 }
 
+export interface ContentChunk {
+  content: string
+  key: number
+}
+
 export type UpdateCallback = (content: string, tokens: number, reasoning_content?: string) => void

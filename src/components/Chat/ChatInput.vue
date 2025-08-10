@@ -73,6 +73,9 @@ function sendMessage() {
   padding: 16px;
   background-color: #fff;
   border-top: 1px solid var(--border-color);
+  width: 760px;
+  left: calc(50% - 380px);
+  border-radius: 16px;
 
   .send-btn {
     position: absolute;
