@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { addId } from '@/utils/addId'
-import type { Chat, Message } from './types'
+import { addId, messageHandler, fetchChatCompletion, fetchChatCompletionStream } from '@/utils'
+import { useSettingStore } from '../setting/setting'
+import type { Chat, Message, ContentChunk } from './types'
 
 export const useChatsStore = defineStore(
   'chat',
@@ -79,13 +80,68 @@ export const useChatsStore = defineStore(
     function updateLastMessage(
       content: string,
       completion_tokens?: number,
-      reasoning_content?: string
+      reasoning_content?: string,
+      chunk?: ContentChunk,
+      reasoningChunk?: ContentChunk,
+      isComplete?: boolean
     ) {
       const lastMessage = getLastMessage()
       if (lastMessage) {
         lastMessage.content = content
         lastMessage.reasoning_content = reasoning_content
         lastMessage.completion_tokens = completion_tokens
+        if (chunk) {
+          if (!lastMessage.contentChunks) lastMessage.contentChunks = []
+          lastMessage.contentChunks.push(chunk)
+        }
+        if (reasoningChunk) {
+          if (!lastMessage.reasoningContentChunks) lastMessage.reasoningContentChunks = []
+          lastMessage.reasoningContentChunks.push(reasoningChunk)
+        }
+        if (isComplete) lastMessage.isComplete = true
+      }
+    }
+
+    async function sendMessage(content: string) {
+      const settingStore = useSettingStore()
+      const updateCallback = (
+        content: string,
+        tokens: number,
+        reasoning_content?: string,
+        chunk?: ContentChunk,
+        reasoningChunk?: ContentChunk,
+        isComplete?: boolean
+      ) => {
+        updateLastMessage(content, tokens, reasoning_content, chunk, reasoningChunk, isComplete)
+      }
+      try {
+        addMessage(messageHandler.formatMessage('user', content))
+        addMessage(messageHandler.formatMessage('assistant', ''))
+
+        toggleLoading(true)
+
+        const messages = currentMessages.value.map(({ role, content }) => ({ role, content }))
+
+        if (settingStore.settings.stream) {
+          const response = await fetchChatCompletionStream(messages)
+          await messageHandler.handleResponse(
+            response,
+            settingStore.settings.stream,
+            updateCallback
+          )
+        } else {
+          const response = await fetchChatCompletion(messages)
+          await messageHandler.handleResponse(
+            response,
+            settingStore.settings.stream,
+            updateCallback
+          )
+        }
+      } catch (error) {
+        console.error('message send error:', error)
+        updateLastMessage('哦豁，发送失败了')
+      } finally {
+        toggleLoading(false)
       }
     }
 
@@ -104,6 +160,7 @@ export const useChatsStore = defineStore(
       addMessage,
       getLastMessage,
       updateLastMessage,
+      sendMessage,
     }
   },
   {

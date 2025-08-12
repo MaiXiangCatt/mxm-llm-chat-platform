@@ -2,6 +2,7 @@
   <div
     ref="scrollContainerRef"
     class="message-list-container"
+    @click="handleContainerClick"
   >
     <div
       v-if="activeChat"
@@ -33,6 +34,7 @@
           class="reasoning-content"
           v-html="renderMarkdown(message.reasoning_content)"
         ></div>
+        <!-- 内容 -->
         <div class="message-content">
           <div
             v-if="isLoading && index === currentMessages.length - 1 && !message.content"
@@ -41,9 +43,53 @@
             <el-icon class="is-loading"><Loading /></el-icon>
           </div>
           <div
+            v-if="
+              message.role === 'assistant' && !message.isComplete && message.contentChunks?.length
+            "
+          >
+            <TransitionGroup
+              name="fade"
+              tag="div"
+              class="content-chunks-wrapper"
+            >
+              <span
+                v-for="chunk in message.contentChunks"
+                :key="chunk.key"
+                v-html="renderMarkDownInline(chunk.content)"
+              ></span>
+            </TransitionGroup>
+          </div>
+          <div
             v-else
             v-html="renderMarkdown(message.content)"
           ></div>
+        </div>
+        <!-- 操作按钮 -->
+        <div
+          v-if="message.role === 'assistant' && !isLoading"
+          class="message-actions"
+        >
+          <button
+            class="action-btn"
+            :data-tooltip="isCopied ? '已复制' : '复制'"
+            @click="handleMessageCopy(message.content)"
+          >
+            <img
+              :src="isCopied ? successIcon : copyIcon"
+              alt="copy"
+            />
+          </button>
+          <button
+            v-if="index === activeChat.messages.length - 1"
+            class="action-btn"
+            data-tooltip="重新生成"
+            @click="handleRegenerate"
+          >
+            <img
+              :src="regenerateIcon"
+              alt="regenerate"
+            />
+          </button>
         </div>
       </div>
     </div>
@@ -60,15 +106,18 @@
 import { ref, nextTick, watch } from 'vue'
 import { useChatsStore } from '@/stores/chats/chats'
 import { storeToRefs } from 'pinia'
-import { renderMarkdown } from '@/utils/markdown'
+import { renderMarkdown, renderMarkDownInline } from '@/utils/markdown'
 import { ArrowDown, Loading } from '@element-plus/icons-vue'
+import copyIcon from '@/assets/copy.png'
+import successIcon from '@/assets/success.png'
+import regenerateIcon from '@/assets/refresh.png'
 
 const chatsStore = useChatsStore()
 const { activeChat, activeChatId, isLoading, currentMessages } = storeToRefs(chatsStore)
 
 const scrollContainerRef = ref<HTMLDivElement | null>(null)
 const isShowReasoning = ref(false)
-
+const isCopied = ref(false)
 function toggleReasoning() {
   isShowReasoning.value = !isShowReasoning.value
 }
@@ -81,7 +130,56 @@ function scrollToBottom() {
   })
 }
 
-watch(() => activeChat.value?.messages, scrollToBottom, { deep: true })
+function handleContainerClick(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  const btn = target.closest<HTMLButtonElement>('.code-action-btn')
+  if (!btn) return
+  event.preventDefault()
+  event.stopPropagation()
+  if (btn.dataset.action === 'copy') {
+    handleCodeCopy(btn)
+  }
+}
+async function handleCodeCopy(btn: HTMLButtonElement) {
+  const code = btn.closest('.code-block')?.querySelector('pre code')
+  if (!code) return
+  const codeText = code.textContent || ''
+
+  try {
+    await navigator.clipboard.writeText(codeText)
+    btn.setAttribute('data-tooltip', '已复制')
+    setTimeout(() => {
+      btn.setAttribute('data-tooltip', '复制')
+    }, 3000)
+  } catch (err) {
+    console.error(err)
+  }
+}
+async function handleMessageCopy(content: string) {
+  try {
+    await navigator.clipboard.writeText(content)
+    isCopied.value = true
+
+    setTimeout(() => {
+      isCopied.value = false
+    }, 1500)
+  } catch (err) {
+    console.error(err)
+  }
+}
+async function handleRegenerate() {
+  if (!activeChat.value) return
+  try {
+    activeChat.value.messages.pop()
+    const lastUserMessage = chatsStore.getLastMessage()
+    if (lastUserMessage && lastUserMessage.role === 'user') {
+      chatsStore.sendMessage(lastUserMessage.content)
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 watch(activeChatId, scrollToBottom)
 </script>
 
@@ -107,12 +205,10 @@ watch(activeChatId, scrollToBottom)
         align-items: center;
         gap: 4px;
         padding: 4px 8px;
-        margin-left: 16px;
         margin-bottom: 8px;
         cursor: pointer;
         width: fit-content;
         border-radius: 4px;
-        background-color: #eef4ff;
         transition: background-color 0.2s ease-in-out;
 
         .toggle-icon {
@@ -139,8 +235,6 @@ watch(activeChatId, scrollToBottom)
 
       .message-content {
         background-color: #fff;
-        margin-bottom: 8px;
-        margin-left: 16px;
         padding: 12px 16px;
         border-radius: 8px;
         white-space: pre-wrap;
@@ -148,6 +242,9 @@ watch(activeChatId, scrollToBottom)
         word-break: break-word;
         overflow: hidden;
 
+        .content-chunks-wrapper {
+          display: inline;
+        }
         :deep(p) {
           margin: 0;
           &:not(:last-child) {
@@ -187,11 +284,158 @@ watch(activeChatId, scrollToBottom)
             text-decoration: underline;
           }
         }
+        :deep(.code-block) {
+          margin: 0.5rem 0;
+          border: 1px solid var(--code-border);
+          border-radius: 0.5rem;
+          overflow: visible;
+          width: 100%;
 
+          > pre {
+            margin: 0 !important;
+          }
+
+          .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background-color: var(--code-header-bg);
+
+            .code-lang {
+              font-size: 0.875rem;
+              color: var(--code-lang-text);
+              font-family: var(--code-font-family);
+            }
+
+            .code-actions {
+              display: flex;
+              gap: 0.5rem;
+
+              .code-action-btn {
+                width: 1.5rem;
+                height: 1.5rem;
+                padding: 0;
+                border: none;
+                background: none;
+                cursor: pointer;
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+                position: relative;
+
+                img {
+                  width: 1rem;
+                  height: 1rem;
+                  opacity: 1;
+                  transition: filter 0.2s;
+                }
+
+                &::after {
+                  content: attr(data-tooltip);
+                  position: absolute;
+                  bottom: 100%;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  padding: 0.25rem 0.5rem;
+                  background-color: rgba(0, 0, 0, 0.75);
+                  color: white;
+                  font-size: 0.75rem;
+                  border-radius: 4px;
+                  white-space: nowrap;
+                  opacity: 0;
+                  visibility: hidden;
+                  transition: all 0.2s ease;
+                  margin-bottom: 5px;
+                  z-index: 1000;
+                }
+
+                &:hover {
+                  background-color: var(--code-header-button-hover-bg);
+                }
+
+                &:hover::after {
+                  opacity: 1;
+                  visibility: visible;
+                }
+              }
+            }
+          }
+
+          pre.hljs {
+            margin: 0 !important;
+            padding: 1rem;
+            background-color: var(--code-block-bg);
+            overflow-x: auto;
+            white-space: pre;
+            code {
+              white-space: pre;
+            }
+          }
+        }
         .loading-wrapper {
           display: flex;
           align-items: center;
           justify-content: center;
+        }
+      }
+      .message-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        padding-left: 0.5rem;
+
+        .action-btn {
+          width: 1.5rem;
+          height: 1.5rem;
+          padding: 0;
+          border: none;
+          background: none;
+          cursor: pointer;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          position: relative;
+
+          img {
+            width: 1rem;
+            height: 1rem;
+            opacity: 1;
+            transition: filter 0.2s;
+          }
+
+          &::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.25rem 0.5rem;
+            background-color: rgba(0, 0, 0, 0.75);
+            color: white;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            margin-bottom: 5px;
+          }
+          &:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            img {
+              filter: brightness(0.4);
+            }
+          }
+          &:hover::after {
+            opacity: 1;
+            visibility: visible;
+          }
         }
       }
     }
@@ -219,5 +463,11 @@ watch(activeChatId, scrollToBottom)
       color: var(--text-color-secondary);
     }
   }
+}
+.fade-enter-active {
+  transition: opacity 0.5s ease;
+}
+.fade-enter-from {
+  opacity: 0;
 }
 </style>

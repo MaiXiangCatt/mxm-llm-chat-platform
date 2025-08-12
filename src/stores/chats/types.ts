@@ -4,8 +4,11 @@ export interface Message {
   id: number
   role: Role
   content: string
+  contentChunks?: ContentChunk[]
+  reasoningContentChunks?: ContentChunk[]
   reasoning_content?: string
   completion_tokens?: number
+  isComplete?: boolean
 }
 
 export interface RequestMessage {
@@ -61,4 +64,11 @@ export interface ContentChunk {
   key: number
 }
 
-export type UpdateCallback = (content: string, tokens: number, reasoning_content?: string) => void
+export type UpdateCallback = (
+  content: string,
+  tokens: number,
+  reasoning_content?: string,
+  chunk?: ContentChunk,
+  reasoningContentChunks?: ContentChunk,
+  isComplete?: boolean
+) => void
