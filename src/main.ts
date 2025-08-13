@@ -4,6 +4,7 @@ import piniaPluginPersistate from 'pinia-plugin-persistedstate'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import './theme/main.scss'
+import router from './router'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -14,4 +15,5 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 }
 
 app.use(pinia)
+app.use(router)
 app.mount('#app')

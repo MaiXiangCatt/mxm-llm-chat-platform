@@ -19,7 +19,6 @@ import MessageList from '@/components/Chat/MessageList.vue'
   display: flex;
   height: 100vh;
   width: 100vw;
-  background-color: #f0f2f5;
 
   .main-content {
     flex: 1;

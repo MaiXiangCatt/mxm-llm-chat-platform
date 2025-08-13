@@ -3,6 +3,7 @@
     <div class="sidebar-header">
       <el-button
         class="new-chat-btn"
+        color="#f9f9f9"
         round
         :icon="Edit"
         @click="chatsStore.addChat"
@@ -108,6 +109,23 @@
         </template>
         <el-switch v-model="customSettings.stream" />
       </el-form-item>
+      <el-form-item label="模型">
+        <el-select
+          v-model="customSettings.model"
+          placeholder="请选择模型"
+          :options="modelOptions"
+        >
+        </el-select>
+      </el-form-item>
+      <el-form-item label="temperature">
+        <el-slider
+          v-model="customSettings.temperature"
+          :min="0"
+          :max="1"
+          :step="0.1"
+          show-input
+        />
+      </el-form-item>
     </el-form>
 
     <template #footer>
@@ -142,12 +160,35 @@ const renameDialogVisible = ref(false)
 const renameDialogInputVal = ref('')
 const editingChat = ref<Chat | void>(void 0)
 const settingDialogVisible = ref(false)
-const temApiKey = ref('')
 const customSettings = reactive({
   apiKey: '',
   stream: false,
+  model: 'deepseek-ai/DeepSeek-R1',
+  temperature: 0.5,
 })
 
+const modelOptions = [
+  {
+    label: 'DeepSeek-R1',
+    value: 'deepseek-ai/DeepSeek-R1',
+  },
+  {
+    label: 'DeepSeek-V3',
+    value: 'deepseek-ai/DeepSeek-V3',
+  },
+  {
+    label: 'Qwen3-235B-A22B-Thinking-2507',
+    value: 'Qwen/Qwen3-235B-A22B-Thinking-2507',
+  },
+  {
+    label: 'Qwen3-235B-A22B-Instruct-2507',
+    value: 'Qwen/Qwen3-235B-A22B-Instruct-2507',
+  },
+  {
+    label: 'Hunyuan-A13B-Instruct',
+    value: 'tencent/Hunyuan-A13B-Instruct',
+  },
+]
 //打开重命名对话框
 function openRenameDialog(chat: Chat) {
   renameDialogInputVal.value = chat.title
@@ -189,7 +230,7 @@ function saveSetting() {
 .sidebar {
   width: 260px;
   flex-shrink: 0;
-  background-color: #ffffff;
+  background-color: #f9f9f9;
   display: flex;
   flex-direction: column;
   padding: 16px;
@@ -213,28 +254,37 @@ function saveSetting() {
     margin-top: 16px;
 
     .chat-item {
-      padding: 12px;
-      border-radius: 8px;
+      height: 40px;
+      padding: 8px 8px 8px 12px;
+      border-radius: 30px;
       cursor: pointer;
       margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
+      align-items: center;
 
       .chat-title {
+        font-size: 14px;
+        height: 20px;
+        line-height: 20px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
-    }
-    .chat-item:hover {
-      background-color: #f0f2f5;
-    }
-    .chat-item.active {
-      background-color: #e8f0fe;
-      color: #1967d2;
-      font-weight: bold;
-    }
 
+      &:hover {
+        background-color: #f0f2f5;
+      }
+
+      &.active {
+        background-color: #d3e3fd;
+        color: #0842a0;
+
+        .chat-title {
+          font-weight: 500;
+        }
+      }
+    }
     .edit-chat-btn {
       visibility: hidden;
       opacity: 0;

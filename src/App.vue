@@ -1,11 +1,9 @@
 <template>
   <div class="app">
-    <chat-view></chat-view>
+    <router-view></router-view>
   </div>
 </template>
 
-<script setup lang="ts">
-import ChatView from './views/ChatView.vue'
-</script>
+<script setup lang="ts"></script>
 
 <style scoped lang="scss"></style>

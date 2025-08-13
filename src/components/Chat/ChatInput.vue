@@ -34,9 +34,10 @@ async function handleSend(content: string) {
   await chatsStore.sendMessage(content)
 }
 function sendMessage() {
-  if (!inputValue.value.trim() || chatsStore.isLoading) return
+  const trimmedValue = inputValue.value.trim()
+  if (!trimmedValue || chatsStore.isLoading) return
 
-  handleSend(inputValue.value)
+  handleSend(trimmedValue)
   inputValue.value = ''
 }
 </script>

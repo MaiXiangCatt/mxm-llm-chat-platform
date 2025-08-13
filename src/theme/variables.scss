@@ -1,6 +1,6 @@
 :root {
   // 基础颜色
-  --text-color: #303133;
+  --text-color: #1b1c1d;
   --text-color-secondary: #909399;
   --bg-color: #ffffff;
   --border-color: #dcdfe6;
@@ -13,6 +13,13 @@
   --code-border: #ebebeb;
   --code-text: #383a42;
   --code-header-button-hover-bg: #e5e6e8;
+
+  //NJU色盘
+  --nju-primary: #63065f;
+  --nju-primary-dark: #4a0547;
+  --nju-primary-light: #823a7f;
+  --nju-primary-lighter: #d4b2d3;
+  --nju-primary-lightest: #f2eaf2;
 }
 
 .code-block {

@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { addId, messageHandler, fetchChatCompletion, fetchChatCompletionStream } from '@/utils'
+import {
+  addId,
+  messageHandler,
+  fetchChatCompletion,
+  fetchChatCompletionStream,
+  fetchChatTitle,
+} from '@/utils'
 import { useSettingStore } from '../setting/setting'
 import type { Chat, Message, ContentChunk } from './types'
 
@@ -136,6 +142,13 @@ export const useChatsStore = defineStore(
             settingStore.settings.stream,
             updateCallback
           )
+        }
+
+        const chat = activeChat.value
+        if (chat && chat.title === 'new chat' && chat.messages.length === 2) {
+          const response = await fetchChatTitle(messages)
+          const newTitle = response?.choices[0].message.content || 'new chat'
+          updateChatTitle(chat.id, newTitle)
         }
       } catch (error) {
         console.error('message send error:', error)

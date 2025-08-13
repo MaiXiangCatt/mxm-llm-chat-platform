@@ -55,3 +55,22 @@ export async function fetchChatCompletionStream(messages: RequestMessage[]) {
     throw error
   }
 }
+export async function fetchChatTitle(messages: RequestMessage[]) {
+  const settingStore = useSettingStore()
+  const userMessages = messages.map((m) => `${m.role}: ${m.content}}`).join('\n')
+  const prompt = `请根据以下对话内容生成一个简短且概括的标题,不超过10个字,只返回标题本身。请勿添加任何前缀,请勿添加任何后缀,请勿添加任何标点符号,请勿添加任何特殊字符,请勿添加任何数字,请勿添加任何emoji,请勿添加任何图片，请勿添加任何链接，请勿添加任何特殊字符。 \n\n对话内容:${userMessages}`
+
+  const payload = {
+    model: settingStore.settings.model,
+    messages: [{ role: 'user', content: prompt }],
+    stream: false,
+    temperature: 0.2,
+  }
+
+  try {
+    const response = await service.post<ChatCompletionResponse>('/v1/chat/completions', payload)
+    return response
+  } catch (err) {
+    console.error(err)
+  }
+}

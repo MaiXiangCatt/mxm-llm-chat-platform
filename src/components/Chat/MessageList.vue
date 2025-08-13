@@ -192,13 +192,16 @@ watch(activeChatId, scrollToBottom)
   .message-list {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    align-items: center;
+    gap: 48px;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
 
     .message-item {
       display: flex;
       flex-direction: column;
       max-width: 80%;
-      margin-bottom: 24px;
 
       .reasoning-toggle {
         display: flex;
@@ -218,7 +221,7 @@ watch(activeChatId, scrollToBottom)
           }
         }
         &:hover {
-          background-color: #dbeaff;
+          background-color: #e9eef6;
         }
       }
 
@@ -234,10 +237,7 @@ watch(activeChatId, scrollToBottom)
       }
 
       .message-content {
-        background-color: #fff;
         padding: 12px 16px;
-        border-radius: 8px;
-        white-space: pre-wrap;
         line-height: 1.6;
         word-break: break-word;
         overflow: hidden;
@@ -444,14 +444,17 @@ watch(activeChatId, scrollToBottom)
       align-self: flex-end;
       .message-content {
         background-color: #e9eef6;
+        color: var(--text-color);
+        border-radius: 24px;
+        border-top-right-radius: 4px;
       }
     }
 
     .message-from-assistant {
       align-self: flex-start;
       .message-content {
-        background-color: #fff;
         color: var(--text-color);
+        white-space: pre-wrap;
       }
     }
 
