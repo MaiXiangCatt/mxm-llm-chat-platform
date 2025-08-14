@@ -217,6 +217,8 @@ function handleCommand(command: dropdownItemCommand) {
 function openSettingDialog() {
   customSettings.apiKey = settingStore.settings.apiKey
   customSettings.stream = settingStore.settings.stream
+  customSettings.model = settingStore.settings.model
+  customSettings.temperature = settingStore.settings.temperature
   settingDialogVisible.value = true
 }
 

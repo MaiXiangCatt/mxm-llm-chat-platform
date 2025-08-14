@@ -14,10 +14,8 @@ const defaultSettings: Settings = {
 export const useSettingStore = defineStore(
   'setting',
   () => {
-    const savedSettings: Partial<Settings> = JSON.parse(localStorage.getItem(SETTING_KEY) || '{}')
     const settings = ref<Settings>({
       ...defaultSettings,
-      ...savedSettings,
     })
 
     function updatesSettings(newSettings: Partial<Settings>) {

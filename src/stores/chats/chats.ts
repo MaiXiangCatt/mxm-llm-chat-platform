@@ -151,6 +151,8 @@ export const useChatsStore = defineStore(
     }
 
     return {
+      chatMap,
+      chatOrder,
       activeChatId,
       activeChat,
       orderedChats,
@@ -170,7 +172,20 @@ export const useChatsStore = defineStore(
   },
   {
     persist: {
-      pick: ['chatMap', 'chatOrder', 'activeChatId'],
+      serializer: {
+        serialize: (value) => {
+          const serializedState = {
+            ...value,
+            chatMap: Array.from(value.chatMap.entries()),
+          }
+          return JSON.stringify(serializedState)
+        },
+        deserialize: (value) => {
+          const state = JSON.parse(value)
+          state.chatMap = new Map(state.chatMap)
+          return state
+        },
+      },
     },
   }
 )
