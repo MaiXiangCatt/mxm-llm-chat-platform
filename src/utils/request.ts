@@ -23,7 +23,7 @@ const statusMap = new Map([
 ])
 
 const service: CustomAxiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 90000,
 })
 

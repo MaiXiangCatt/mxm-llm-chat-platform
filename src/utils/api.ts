@@ -2,6 +2,7 @@ import service from './request'
 import { useSettingStore } from '@/stores/setting/setting'
 import type { ChatCompletionResponse, RequestMessage } from '@/stores/chats/types'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 export async function fetchChatCompletion(messages: RequestMessage[]) {
   const settingStore = useSettingStore()
   const payload = {
@@ -45,7 +46,7 @@ export async function fetchChatCompletionStream(messages: RequestMessage[]) {
   }
 
   try {
-    const response = await fetch('/api/v1/chat/completions', config)
+    const response = await fetch(`${API_BASE_URL}/v1/chat/completions`, config)
     if (!response.ok) {
       throw new Error(`HTTP Error: ${response.status}`)
     }
