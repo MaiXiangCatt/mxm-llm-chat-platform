@@ -1,10 +1,4 @@
-import type {
-  Role,
-  Message,
-  ChatCompletionResponse,
-  UpdateCallback,
-  ContentChunk,
-} from '@/stores/chats/types'
+import type { Role, Message, ChatCompletionResponse, UpdateCallback } from '@/stores/chats/types'
 
 export const messageHandler = {
   formatMessage(role: Role, content: string, reasoning_content?: string): Message {
@@ -130,7 +124,6 @@ export const messageHandler = {
   //   }
   // },
 
-  // rAF方案
   async handleStreamResponse(response: Response, updateCallback: UpdateCallback) {
     const reader = response.body?.getReader()
     if (!reader) {
@@ -140,58 +133,6 @@ export const messageHandler = {
     const decoder = new TextDecoder()
     let accumulatedContent = ''
     let accumulatedReasoningContent = ''
-    let backContent = ''
-    let backReasoningContent = ''
-    let animationFrameId: number | null = null
-    const CHAR_PER_TICK = 8
-
-    let chunkKey = 0
-    let reasoningChunkKey = 0
-
-    const render = () => {
-      if (backContent.length === 0 && backReasoningContent.length === 0) {
-        animationFrameId = null
-        return
-      }
-
-      let reasoningChunkContent = ''
-      let chunkContent = ''
-
-      if (backReasoningContent.length) {
-        reasoningChunkContent = backReasoningContent
-        accumulatedReasoningContent += backReasoningContent
-        backReasoningContent = ''
-      }
-      if (backContent.length) {
-        chunkContent = backContent
-        accumulatedContent += backContent
-        backContent = ''
-      }
-      const chunk: ContentChunk = {
-        content: chunkContent,
-        key: chunkKey++,
-      }
-      const reasoningChunk: ContentChunk = {
-        content: reasoningChunkContent,
-        key: reasoningChunkKey++,
-      }
-      updateCallback(
-        accumulatedContent,
-        0,
-        accumulatedReasoningContent,
-        chunk,
-        reasoningChunk,
-        false
-      )
-
-      animationFrameId = requestAnimationFrame(render)
-    }
-
-    const ensureRendering = () => {
-      if (animationFrameId === null) {
-        animationFrameId = requestAnimationFrame(render)
-      }
-    }
 
     try {
       while (true) {
@@ -209,21 +150,17 @@ export const messageHandler = {
             const reasoningContent = parsedData.choices[0].delta.reasoning_content || ''
 
             if (content) {
-              backContent += content
+              accumulatedContent += content
             }
             if (reasoningContent) {
-              backReasoningContent += reasoningContent
+              accumulatedReasoningContent += reasoningContent
             }
-            ensureRendering()
+            updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
           }
         }
       }
     } finally {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId)
-        animationFrameId = null
-      }
-      updateCallback(accumulatedContent, 0, accumulatedReasoningContent, void 0, void 0, true)
+      updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
     }
   },
 

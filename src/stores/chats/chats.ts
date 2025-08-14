@@ -8,12 +8,14 @@ import {
   fetchChatTitle,
 } from '@/utils'
 import { useSettingStore } from '../setting/setting'
-import type { Chat, Message, ContentChunk } from './types'
+import type { Chat, Message } from './types'
 
 export const useChatsStore = defineStore(
   'chat',
   () => {
-    const chats = ref<Chat[]>([])
+    // const chats = ref<Chat[]>([])
+    const chatMap = ref(new Map<string, Chat>())
+    const chatOrder = ref<string[]>([])
     const activeChatId = ref<string | null>(null)
     const isLoading = ref(false)
 
@@ -21,7 +23,10 @@ export const useChatsStore = defineStore(
     //   return chats.value.find((chat) => chat.id === activeChatId.value)
     // }
     const activeChat = computed(() => {
-      return chats.value.find((chat) => chat.id === activeChatId.value)
+      return activeChatId.value ? chatMap.value.get(activeChatId.value) : void 0
+    })
+    const orderedChats = computed(() => {
+      return chatOrder.value.map((id) => chatMap.value.get(id))
     })
 
     const currentMessages = computed(() => {
@@ -32,12 +37,14 @@ export const useChatsStore = defineStore(
     })
     //增删改查
     function addChat() {
+      const newId = addId().value
       const newChat = {
-        id: addId().value,
+        id: newId,
         title: 'new chat',
         messages: [],
       }
-      chats.value.unshift(newChat)
+      chatOrder.value.unshift(newId)
+      chatMap.value.set(newId, newChat)
       activeChatId.value = newChat.id
     }
 
@@ -46,7 +53,7 @@ export const useChatsStore = defineStore(
     }
 
     function getChatById(id: string) {
-      return chats.value.find((chat) => chat.id === id)
+      return chatMap.value.get(id)
     }
     function updateChatTitle(id: string, title: string) {
       const chat = getChatById(id)
@@ -55,14 +62,15 @@ export const useChatsStore = defineStore(
       }
     }
     function deleteChat(id: string) {
-      const index = chats.value.findIndex((chat) => chat.id === id)
+      const index = chatOrder.value.findIndex((chatId) => chatId === id)
       if (index === -1) return
-      chats.value.splice(index, 1)
+
+      chatMap.value.delete(id)
+      chatOrder.value.splice(index, 1)
+
       if (activeChatId.value === id) {
         const newActiveIndex = Math.max(index - 1, 0)
-        activeChatId.value = chats.value[newActiveIndex]?.id
-      } else {
-        activeChatId.value = null
+        activeChatId.value = chatOrder.value[newActiveIndex] || null
       }
     }
 
@@ -71,8 +79,9 @@ export const useChatsStore = defineStore(
     }
 
     function addMessage(message: Message) {
-      if (activeChat.value) {
-        activeChat.value.messages.push(message)
+      if (activeChatId.value) {
+        const chat = chatMap.value.get(activeChatId.value)
+        chat && chat.messages.push(message)
       }
     }
 
@@ -86,39 +95,20 @@ export const useChatsStore = defineStore(
     function updateLastMessage(
       content: string,
       completion_tokens?: number,
-      reasoning_content?: string,
-      chunk?: ContentChunk,
-      reasoningChunk?: ContentChunk,
-      isComplete?: boolean
+      reasoning_content?: string
     ) {
       const lastMessage = getLastMessage()
       if (lastMessage) {
         lastMessage.content = content
         lastMessage.reasoning_content = reasoning_content
         lastMessage.completion_tokens = completion_tokens
-        if (chunk) {
-          if (!lastMessage.contentChunks) lastMessage.contentChunks = []
-          lastMessage.contentChunks.push(chunk)
-        }
-        if (reasoningChunk) {
-          if (!lastMessage.reasoningContentChunks) lastMessage.reasoningContentChunks = []
-          lastMessage.reasoningContentChunks.push(reasoningChunk)
-        }
-        if (isComplete) lastMessage.isComplete = true
       }
     }
 
     async function sendMessage(content: string) {
       const settingStore = useSettingStore()
-      const updateCallback = (
-        content: string,
-        tokens: number,
-        reasoning_content?: string,
-        chunk?: ContentChunk,
-        reasoningChunk?: ContentChunk,
-        isComplete?: boolean
-      ) => {
-        updateLastMessage(content, tokens, reasoning_content, chunk, reasoningChunk, isComplete)
+      const updateCallback = (content: string, tokens: number, reasoning_content?: string) => {
+        updateLastMessage(content, tokens, reasoning_content)
       }
       try {
         addMessage(messageHandler.formatMessage('user', content))
@@ -130,6 +120,7 @@ export const useChatsStore = defineStore(
 
         if (settingStore.settings.stream) {
           const response = await fetchChatCompletionStream(messages)
+          toggleLoading(false)
           await messageHandler.handleResponse(
             response,
             settingStore.settings.stream,
@@ -137,6 +128,7 @@ export const useChatsStore = defineStore(
           )
         } else {
           const response = await fetchChatCompletion(messages)
+          toggleLoading(false)
           await messageHandler.handleResponse(
             response,
             settingStore.settings.stream,
@@ -154,14 +146,14 @@ export const useChatsStore = defineStore(
         console.error('message send error:', error)
         updateLastMessage('哦豁，发送失败了')
       } finally {
-        toggleLoading(false)
+        if (isLoading.value) toggleLoading(false)
       }
     }
 
     return {
-      chats,
       activeChatId,
       activeChat,
+      orderedChats,
       currentMessages,
       isLoading,
       addChat,

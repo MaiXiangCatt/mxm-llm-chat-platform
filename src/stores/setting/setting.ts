@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import type { Settings } from './types'
 
 const SETTING_KEY = 'chat-setting'

@@ -32,8 +32,9 @@
         <div
           v-if="isShowReasoning && message.reasoning_content"
           class="reasoning-content"
-          v-html="renderMarkdown(message.reasoning_content)"
-        ></div>
+        >
+          {{ message.reasoning_content }}
+        </div>
         <!-- 内容 -->
         <div class="message-content">
           <div
@@ -41,23 +42,6 @@
             class="loading-wrapper"
           >
             <el-icon class="is-loading"><Loading /></el-icon>
-          </div>
-          <div
-            v-else-if="
-              message.role === 'assistant' && !message.isComplete && message.contentChunks?.length
-            "
-          >
-            <TransitionGroup
-              name="fade"
-              tag="div"
-              class="content-chunks-wrapper"
-            >
-              <span
-                v-for="chunk in message.contentChunks"
-                :key="chunk.key"
-                v-html="renderMarkDownInline(chunk.content)"
-              ></span>
-            </TransitionGroup>
           </div>
           <div
             v-else
@@ -181,6 +165,7 @@ async function handleRegenerate() {
     activeChat.value.messages.pop()
     const lastUserMessage = chatsStore.getLastMessage()
     if (lastUserMessage && lastUserMessage.role === 'user') {
+      activeChat.value.messages.pop()
       chatsStore.sendMessage(lastUserMessage.content)
     }
   } catch (err) {
