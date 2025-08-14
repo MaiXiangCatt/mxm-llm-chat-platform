@@ -170,7 +170,7 @@ export const useChatsStore = defineStore(
   },
   {
     persist: {
-      pick: ['chats', 'activeChatId'],
+      pick: ['chatMap', 'chatOrder', 'activeChatId'],
     },
   }
 )
