@@ -13,7 +13,7 @@
       class="send-btn"
       circle
       size="large"
-      :icon="Position"
+      :icon="Promotion"
       :disabled="chatsStore.isLoading || !inputValue.trim()"
       @click="sendMessage"
     ></el-button>
@@ -23,8 +23,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useChatsStore } from '@/stores/chats/chats'
-import { useSettingStore } from '@/stores/setting/setting'
-import { Position } from '@element-plus/icons-vue'
+import { Promotion } from '@element-plus/icons-vue'
 
 const chatsStore = useChatsStore()
 
@@ -44,18 +43,39 @@ function sendMessage() {
 
 <style scoped lang="scss">
 .chat-input-area {
-  position: relative;
-  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
   background-color: #fff;
-  border-top: 1px solid var(--border-color);
-  width: 760px;
-  left: calc(50% - 380px);
-  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 1.5rem;
+  width: 100%;
+  max-width: 800px;
 
+  margin: 0 auto;
+
+  :deep(.el-textarea) {
+    flex-grow: 1;
+
+    .el-textarea__inner {
+      background-color: transparent;
+      box-shadow: none !important;
+      padding: 0;
+      color: var(--text-color-primary);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+  }
   .send-btn {
-    position: absolute;
-    bottom: 25px;
-    right: 30px;
+    flex-shrink: 0;
+    color: var(--text-color);
+    background-color: #fff;
+
+    :deep(.el-icon) {
+      font-size: 1.5rem;
+      color: var(--text-color);
+    }
   }
 }
 </style>

@@ -23,7 +23,44 @@ export const messageHandler = {
       response.choices[0].message.reasoning_content
     )
   },
+  // async handleStreamResponse(response: Response, updateCallback: UpdateCallback) {
+  //   const reader = response.body!.getReader()
+  //   if (!reader) throw new Error('reader is null')
 
+  //   const decoder = new TextDecoder()
+  //   let accumulatedContent = ''
+  //   let accumulatedReasoningContent = ''
+
+  //   try {
+  //     while (true) {
+  //       const { done, value } = await reader.read()
+  //       if (done) break
+
+  //       const chunk = decoder.decode(value, { stream: true })
+  //       const lines = chunk.split('\n').filter((line) => line.trim() !== '')
+
+  //       for (const line of lines) {
+  //         if (line === 'data: [DONE]') continue
+  //         if (line.startsWith('data: ')) {
+  //           const parsedData = JSON.parse(line.slice(6))
+  //           const content = parsedData.choices[0].delta.content || ''
+  //           const reasoning_content = parsedData.choices[0].delta.reasoning_content || ''
+
+  //           if (content) {
+  //             accumulatedContent += content
+  //           }
+  //           if (reasoning_content) {
+  //             accumulatedReasoningContent += reasoning_content
+  //           }
+  //           // Directly update with the accumulated string, no chunks needed
+  //           updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
+  //         }
+  //       }
+  //     }
+  //   } finally {
+  //     updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
+  //   }
+  // },
   // async handleStreamResponse(response: Response, updateCallback: UpdateCallback) {
   //   const reader = response.body?.getReader()
   //   if (!reader) {
@@ -41,17 +78,17 @@ export const messageHandler = {
   //     if (typingTimer) return
   //     typingTimer = window.setInterval(() => {
   //       if (reasoningQueue.length) {
-  //         accumulatedReasoningContent += reasoningQueue.shift()
+  //         accumulatedReasoningContent += reasoningQueue.splice(0)
   //       }
   //       if (contentQueue.length) {
-  //         accumulatedContent += contentQueue.shift()
+  //         accumulatedContent += contentQueue.splice(0)
   //       }
   //       updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
   //       if (!reasoningQueue.length && !contentQueue.length) {
   //         clearInterval(typingTimer!)
   //         typingTimer = null
   //       }
-  //     }, 18)
+  //     }, 200)
   //   }
 
   //   try {
@@ -94,115 +131,44 @@ export const messageHandler = {
   // },
 
   // rAF方案
-  // async handleStreamResponse(response: Response, updateCallback: UpdateCallback) {
-  //   const reader = response.body?.getReader()
-  //   if (!reader) {
-  //     throw new Error('Response body is null!')
-  //   }
-
-  //   const decoder = new TextDecoder()
-  //   let accumulatedContent = ''
-  //   let accumulatedReasoningContent = ''
-  //   const contentQueue: string[] = []
-  //   const reasoningQueue: string[] = []
-  //   let animationFrameId: number | null = null
-
-  //   let lastTime = 0
-  //   const RENDERSPEED = 16
-  //   const render = (timeStamp: number) => {
-  //     if (contentQueue.length === 0 && reasoningQueue.length === 0) {
-  //       animationFrameId = null
-  //       return
-  //     }
-  //     if (timeStamp - lastTime >= RENDERSPEED) {
-  //       if (reasoningQueue.length > 0) {
-  //         accumulatedReasoningContent += reasoningQueue.shift()
-  //       }
-  //       if (contentQueue.length > 0) {
-  //         accumulatedContent += contentQueue.shift()
-  //       }
-  //       updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
-  //       lastTime = timeStamp
-  //     }
-
-  //     animationFrameId = requestAnimationFrame(render)
-  //   }
-
-  //   const ensureRendering = () => {
-  //     if (animationFrameId === null) {
-  //       animationFrameId = requestAnimationFrame(render)
-  //     }
-  //   }
-
-  //   try {
-  //     while (true) {
-  //       const { done, value } = await reader.read()
-  //       if (done) break
-
-  //       const chunk = decoder.decode(value, { stream: true })
-  //       const lines = chunk.split('\n').filter((line) => line.trim() !== '')
-
-  //       for (const line of lines) {
-  //         if (line === 'data: [DONE]') continue
-  //         if (line.startsWith('data: ')) {
-  //           const parsedData = JSON.parse(line.substring(6))
-  //           const content = parsedData.choices[0].delta.content || ''
-  //           const reasoningContent = parsedData.choices[0].delta.reasoning_content || ''
-
-  //           if (content) {
-  //             contentQueue.push(...content.split(''))
-  //           }
-  //           if (reasoningContent) {
-  //             reasoningQueue.push(...reasoningContent.split(''))
-  //           }
-  //           ensureRendering()
-  //         }
-  //       }
-  //     }
-  //   } finally {
-  //     if (animationFrameId) {
-  //       cancelAnimationFrame(animationFrameId)
-  //     }
-  //     if (contentQueue.length > 0 || reasoningQueue.length > 0) {
-  //       accumulatedContent += contentQueue.join('')
-  //       accumulatedReasoningContent += reasoningQueue.join('')
-  //       updateCallback(accumulatedContent, 0, accumulatedReasoningContent)
-  //     }
-  //   }
-  // },
-
-  //渐显
   async handleStreamResponse(response: Response, updateCallback: UpdateCallback) {
-    const reader = response.body!.getReader()
-    if (!reader) throw new Error('reader is null')
+    const reader = response.body?.getReader()
+    if (!reader) {
+      throw new Error('Response body is null!')
+    }
 
     const decoder = new TextDecoder()
     let accumulatedContent = ''
     let accumulatedReasoningContent = ''
-    const contentQueue: string[] = []
-    const reasoningQueue: string[] = []
+    let backContent = ''
+    let backReasoningContent = ''
     let animationFrameId: number | null = null
+    const CHAR_PER_TICK = 8
+
     let chunkKey = 0
     let reasoningChunkKey = 0
 
     const render = () => {
-      if (!contentQueue.length && !reasoningQueue.length) {
+      if (backContent.length === 0 && backReasoningContent.length === 0) {
         animationFrameId = null
         return
       }
-      let currentChunkContent = ''
-      let reasoningChunkContent = ''
 
-      if (reasoningQueue.length) {
-        reasoningChunkContent = reasoningQueue.shift()!
-        accumulatedReasoningContent += reasoningChunkContent
+      let reasoningChunkContent = ''
+      let chunkContent = ''
+
+      if (backReasoningContent.length) {
+        reasoningChunkContent = backReasoningContent
+        accumulatedReasoningContent += backReasoningContent
+        backReasoningContent = ''
       }
-      if (contentQueue.length) {
-        currentChunkContent = contentQueue.shift()!
-        accumulatedContent += currentChunkContent
+      if (backContent.length) {
+        chunkContent = backContent
+        accumulatedContent += backContent
+        backContent = ''
       }
       const chunk: ContentChunk = {
-        content: currentChunkContent,
+        content: chunkContent,
         key: chunkKey++,
       }
       const reasoningChunk: ContentChunk = {
@@ -217,11 +183,14 @@ export const messageHandler = {
         reasoningChunk,
         false
       )
+
       animationFrameId = requestAnimationFrame(render)
     }
 
     const ensureRendering = () => {
-      if (animationFrameId === null) animationFrameId = requestAnimationFrame(render)
+      if (animationFrameId === null) {
+        animationFrameId = requestAnimationFrame(render)
+      }
     }
 
     try {
@@ -235,15 +204,15 @@ export const messageHandler = {
         for (const line of lines) {
           if (line === 'data: [DONE]') continue
           if (line.startsWith('data: ')) {
-            const parsedData = JSON.parse(line.slice(6))
+            const parsedData = JSON.parse(line.substring(6))
             const content = parsedData.choices[0].delta.content || ''
-            const reasoning_content = parsedData.choices[0].delta.reasoning_content || ''
+            const reasoningContent = parsedData.choices[0].delta.reasoning_content || ''
 
             if (content) {
-              contentQueue.push(...content.split(''))
+              backContent += content
             }
-            if (reasoning_content) {
-              reasoningQueue.push(...reasoning_content.split(''))
+            if (reasoningContent) {
+              backReasoningContent += reasoningContent
             }
             ensureRendering()
           }
@@ -252,10 +221,97 @@ export const messageHandler = {
     } finally {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId)
+        animationFrameId = null
       }
       updateCallback(accumulatedContent, 0, accumulatedReasoningContent, void 0, void 0, true)
     }
   },
+
+  // 渐显
+  // async handleStreamResponse(response: Response, updateCallback: UpdateCallback) {
+  //   const reader = response.body!.getReader()
+  //   if (!reader) throw new Error('reader is null')
+
+  //   const decoder = new TextDecoder()
+  //   let accumulatedContent = ''
+  //   let accumulatedReasoningContent = ''
+  //   const contentQueue: string[] = []
+  //   const reasoningQueue: string[] = []
+  //   let animationFrameId: number | null = null
+  //   let chunkKey = 0
+  //   let reasoningChunkKey = 0
+
+  //   const render = () => {
+  //     if (!contentQueue.length && !reasoningQueue.length) {
+  //       animationFrameId = null
+  //       return
+  //     }
+  //     let currentChunkContent = ''
+  //     let reasoningChunkContent = ''
+
+  //     if (reasoningQueue.length) {
+  //       reasoningChunkContent = reasoningQueue.shift()!
+  //       accumulatedReasoningContent += reasoningChunkContent
+  //     }
+  //     if (contentQueue.length) {
+  //       currentChunkContent = contentQueue.shift()!
+  //       accumulatedContent += currentChunkContent
+  //     }
+  //     const chunk: ContentChunk = {
+  //       content: currentChunkContent,
+  //       key: chunkKey++,
+  //     }
+  //     const reasoningChunk: ContentChunk = {
+  //       content: reasoningChunkContent,
+  //       key: reasoningChunkKey++,
+  //     }
+  //     updateCallback(
+  //       accumulatedContent,
+  //       0,
+  //       accumulatedReasoningContent,
+  //       chunk,
+  //       reasoningChunk,
+  //       false
+  //     )
+  //     animationFrameId = requestAnimationFrame(render)
+  //   }
+
+  //   const ensureRendering = () => {
+  //     if (animationFrameId === null) animationFrameId = requestAnimationFrame(render)
+  //   }
+
+  //   try {
+  //     while (true) {
+  //       const { done, value } = await reader.read()
+  //       if (done) break
+
+  //       const chunk = decoder.decode(value, { stream: true })
+  //       const lines = chunk.split('\n').filter((line) => line.trim() !== '')
+
+  //       for (const line of lines) {
+  //         if (line === 'data: [DONE]') continue
+  //         if (line.startsWith('data: ')) {
+  //           const parsedData = JSON.parse(line.slice(6))
+  //           const content = parsedData.choices[0].delta.content || ''
+  //           const reasoning_content = parsedData.choices[0].delta.reasoning_content || ''
+
+  //           if (content) {
+  //             contentQueue.push(...content.split(''))
+  //           }
+  //           if (reasoning_content) {
+  //             reasoningQueue.push(...reasoning_content.split(''))
+  //           }
+  //           ensureRendering()
+  //         }
+  //       }
+  //     }
+  //   } finally {
+  //     if (animationFrameId) {
+  //       cancelAnimationFrame(animationFrameId)
+  //     }
+  //     updateCallback(accumulatedContent, 0, accumulatedReasoningContent, void 0, void 0, true)
+  //   }
+  // },
   async handleResponse(response: any, isStream: boolean, updateCallback: UpdateCallback) {
     if (isStream) {
       await this.handleStreamResponse(response, updateCallback)

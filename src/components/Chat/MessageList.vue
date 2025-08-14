@@ -43,7 +43,7 @@
             <el-icon class="is-loading"><Loading /></el-icon>
           </div>
           <div
-            v-if="
+            v-else-if="
               message.role === 'assistant' && !message.isComplete && message.contentChunks?.length
             "
           >
@@ -97,13 +97,13 @@
       v-else
       class="no-active-chat"
     >
-      <p>选择或创建新对话开始聊天</p>
+      <h2>{{ welcomeMessage }}, 欢迎使用Mxm AI对话平台</h2>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch } from 'vue'
+import { ref, nextTick, watch, computed } from 'vue'
 import { useChatsStore } from '@/stores/chats/chats'
 import { storeToRefs } from 'pinia'
 import { renderMarkdown, renderMarkDownInline } from '@/utils/markdown'
@@ -118,6 +118,14 @@ const { activeChat, activeChatId, isLoading, currentMessages } = storeToRefs(cha
 const scrollContainerRef = ref<HTMLDivElement | null>(null)
 const isShowReasoning = ref(false)
 const isCopied = ref(false)
+
+const welcomeMessage = computed(() => {
+  const currentHour = new Date().getHours()
+  if (currentHour < 6 || currentHour >= 18) return '晚上好'
+  if (currentHour >= 6 && currentHour < 9) return '早上好'
+  if (currentHour >= 9 && currentHour < 12) return '上午好'
+  return '下午好'
+})
 function toggleReasoning() {
   isShowReasoning.value = !isShowReasoning.value
 }
@@ -457,13 +465,33 @@ watch(activeChatId, scrollToBottom)
         white-space: pre-wrap;
       }
     }
+  }
 
-    .no-active-chat {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: var(--text-color-secondary);
+  .no-active-chat {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    color: var(--nju-primary);
+
+    h2 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      text-align: center;
+      background: linear-gradient(
+        90deg,
+        var(--el-color-primary-light-3),
+        var(--el-color-primary),
+        var(--el-color-primary-light-3),
+        var(--el-color-primary)
+      );
+      background-size: 300% 100%; // 背景宽度为300%
+
+      // 2. 将背景裁切为文字的形状
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
   }
 }
