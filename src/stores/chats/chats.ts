@@ -26,7 +26,7 @@ export const useChatsStore = defineStore(
       return activeChatId.value ? chatMap.value.get(activeChatId.value) : void 0
     })
     const orderedChats = computed(() => {
-      return chatOrder.value.map((id) => chatMap.value.get(id))
+      return chatOrder.value.map((id) => chatMap.value.get(id)!)
     })
 
     const currentMessages = computed(() => {

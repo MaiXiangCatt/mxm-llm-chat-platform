@@ -13,7 +13,7 @@
     </div>
     <div class="chat-list">
       <div
-        v-for="chat in chatsStore.chats"
+        v-for="chat in chatsStore.orderedChats"
         :key="chat.id"
         class="chat-item"
         :class="{ active: chat.id === chatsStore.activeChatId }"
