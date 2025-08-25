@@ -90,7 +90,7 @@
 import { ref, nextTick, watch, computed } from 'vue'
 import { useChatsStore } from '@/stores/chats/chats'
 import { storeToRefs } from 'pinia'
-import { renderMarkdown, renderMarkDownInline } from '@/utils/markdown'
+import { renderMarkdown } from '@/utils/markdown'
 import { ArrowDown, Loading } from '@element-plus/icons-vue'
 import copyIcon from '@/assets/copy.png'
 import successIcon from '@/assets/success.png'
@@ -174,6 +174,7 @@ async function handleRegenerate() {
 }
 
 watch(activeChatId, scrollToBottom)
+watch(() => currentMessages.value.length, scrollToBottom)
 </script>
 
 <style scoped lang="scss">

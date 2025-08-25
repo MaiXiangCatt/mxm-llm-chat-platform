@@ -6,7 +6,7 @@
       type="textarea"
       :row="4"
       resize="none"
-      @keydown.enter.prevent="sendMessage"
+      @keydown.enter.exact.prevent="sendMessage"
     >
     </el-input>
     <el-button
