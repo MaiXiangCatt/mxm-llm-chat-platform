@@ -1,4 +1,13 @@
-import { ref, computed, type Ref, onMounted, onUnmounted, watch, type CSSProperties } from 'vue'
+import {
+  ref,
+  computed,
+  type Ref,
+  onMounted,
+  onUnmounted,
+  watch,
+  type CSSProperties,
+  nextTick,
+} from 'vue'
 import { throttle } from 'lodash-es'
 
 interface VirtualListOptions {
@@ -21,6 +30,7 @@ export function useVirtualList<T>(rawData: Ref<T[]>, options: VirtualListOptions
   const endIndex = ref(0)
   const overscan = options.overscan || 5
   const itemGap = options.itemGap || 0
+  const isAtBottom = ref(true)
 
   const totalHeight = computed(() => {
     if (positions.value.length === 0) return 0
@@ -52,6 +62,14 @@ export function useVirtualList<T>(rawData: Ref<T[]>, options: VirtualListOptions
       }
     }
     return {}
+  }
+
+  const scrollToBottom = () => {
+    if (containerRef.value) {
+      nextTick(() => {
+        containerRef.value!.scrollTop = containerRef.value!.scrollHeight
+      })
+    }
   }
 
   const initPositions = () => {
@@ -101,7 +119,13 @@ export function useVirtualList<T>(rawData: Ref<T[]>, options: VirtualListOptions
     endIndex.value = Math.min(positions.value.length - 1, end + overscan)
   }
 
-  const handleScroll = throttle(calculateRange, 16)
+  const handleScroll = throttle(() => {
+    if (!containerRef.value) return
+    const { scrollTop, clientHeight, scrollHeight } = containerRef.value
+    isAtBottom.value = scrollTop + clientHeight >= scrollHeight - 100
+    console.log(isAtBottom.value)
+    calculateRange()
+  }, 16)
 
   const updatePosition = (index: number, height: number) => {
     const position = positions.value[index]
@@ -113,6 +137,9 @@ export function useVirtualList<T>(rawData: Ref<T[]>, options: VirtualListOptions
     for (let i = index + 1; i < positions.value.length; i++) {
       positions.value[i].top = positions.value[i - 1].bottom + itemGap
       positions.value[i].bottom = positions.value[i].top + positions.value[i].height
+    }
+    if (isAtBottom.value) {
+      scrollToBottom()
     }
   }
 
@@ -138,9 +165,12 @@ export function useVirtualList<T>(rawData: Ref<T[]>, options: VirtualListOptions
 
   watch(
     () => rawData.value.length,
-    () => {
+    (newVal, oldVal) => {
       initPositions()
       calculateRange()
+      if (newVal > oldVal) {
+        scrollToBottom()
+      }
     }
   )
 
@@ -154,5 +184,6 @@ export function useVirtualList<T>(rawData: Ref<T[]>, options: VirtualListOptions
     getItemStyle,
     observeItem,
     unObserveItem,
+    scrollToBottom,
   }
 }

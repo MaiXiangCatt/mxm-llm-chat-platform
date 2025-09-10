@@ -91,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch, computed, onBeforeUpdate, reactive } from 'vue'
+import { ref, watch, computed, onBeforeUpdate, reactive } from 'vue'
 import { useChatsStore } from '@/stores/chats/chats'
 import { storeToRefs } from 'pinia'
 import { renderMarkdown } from '@/utils/markdown'
@@ -105,16 +105,22 @@ import regenerateIcon from '@/assets/refresh.png'
 const chatsStore = useChatsStore()
 const { activeChat, activeChatId, isLoading, currentMessages } = storeToRefs(chatsStore)
 
-const scrollContainerRef = ref<HTMLDivElement | null>(null)
 const visibleReasonings = reactive(new Set<number>())
 const isCopied = ref(false)
 
-const { containerRef, visibleData, wrapperStyle, observeItem, getItemStyle, unObserveItem } =
-  useVirtualList<Message>(currentMessages, {
-    itemHeight: 120,
-    overscan: 5,
-    itemGap: 48,
-  })
+const {
+  containerRef,
+  visibleData,
+  wrapperStyle,
+  observeItem,
+  getItemStyle,
+  unObserveItem,
+  scrollToBottom,
+} = useVirtualList<Message>(currentMessages, {
+  itemHeight: 120,
+  overscan: 5,
+  itemGap: 48,
+})
 
 const itemRefs = ref<HTMLElement[]>([])
 
@@ -141,14 +147,6 @@ function toggleReasoning(index: number) {
 }
 function isReasoningVisible(index: number) {
   return visibleReasonings.has(index)
-}
-
-function scrollToBottom() {
-  nextTick(() => {
-    if (scrollContainerRef.value) {
-      scrollContainerRef.value.scrollTop = scrollContainerRef.value.scrollHeight
-    }
-  })
 }
 
 function handleContainerClick(event: MouseEvent) {
@@ -203,7 +201,7 @@ async function handleRegenerate() {
 }
 
 watch(activeChatId, scrollToBottom, { immediate: true })
-watch(() => currentMessages.value.length, scrollToBottom)
+// watch(() => currentMessages.value.length, scrollToBottom)
 onBeforeUpdate(() => {
   itemRefs.value.forEach((item) => {
     unObserveItem(item)
