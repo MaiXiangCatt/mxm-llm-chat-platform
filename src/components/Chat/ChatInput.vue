@@ -17,6 +17,11 @@
       :disabled="chatsStore.isLoading || !inputValue.trim()"
       @click="sendMessage"
     ></el-button>
+    <!-- <el-button
+      type="primary"
+      @click="renderMockMessage"
+      >渲染测试内容</el-button
+    > -->
   </div>
 </template>
 
@@ -24,6 +29,7 @@
 import { ref } from 'vue'
 import { useChatsStore } from '@/stores/chats/chats'
 import { Promotion } from '@element-plus/icons-vue'
+// import { generateMockMessages } from '@/utils/generateMockMessage'
 
 const chatsStore = useChatsStore()
 
@@ -39,6 +45,11 @@ function sendMessage() {
   handleSend(trimmedValue)
   inputValue.value = ''
 }
+
+// function renderMockMessage() {
+//   const messages = generateMockMessages(400)
+//   chatsStore.addMockMessages(messages)
+// }
 </script>
 
 <style scoped lang="scss">

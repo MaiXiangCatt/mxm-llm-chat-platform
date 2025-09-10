@@ -150,6 +150,12 @@ export const useChatsStore = defineStore(
       }
     }
 
+    function addMockMessages(mockMessages: Message[]) {
+      if (activeChatId.value) {
+        activeChat.value?.messages.push(...mockMessages)
+      }
+    }
+
     return {
       chatMap,
       chatOrder,
@@ -168,6 +174,7 @@ export const useChatsStore = defineStore(
       getLastMessage,
       updateLastMessage,
       sendMessage,
+      addMockMessages,
     }
   },
   {

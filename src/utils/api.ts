@@ -40,6 +40,7 @@ export async function fetchChatCompletionStream(messages: RequestMessage[]) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
       Authorization: `Bearer ${settingStore.settings.apiKey}`,
     },
     body: JSON.stringify(payload),

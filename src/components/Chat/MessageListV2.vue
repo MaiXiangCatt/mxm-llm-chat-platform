@@ -1,62 +1,66 @@
 <template>
   <div
-    ref="scrollContainerRef"
+    ref="containerRef"
     class="message-list-container"
     @click="handleContainerClick"
   >
     <div
       v-if="activeChat"
       class="message-list"
+      :style="wrapperStyle"
     >
       <div
-        v-for="(message, index) in activeChat.messages"
-        :key="index"
+        v-for="item in visibleData"
+        :ref="observe"
+        :key="item.index"
         class="message-item"
-        :class="[`message-from-` + message.role]"
+        :class="[`message-from-` + item.data.role]"
+        :data-index="item.index"
+        :style="getItemStyle(item.index)"
       >
         <!-- 是否展示思考过程切换按钮 -->
         <div
-          v-if="message.reasoning_content"
+          v-if="item.data.reasoning_content"
           class="reasoning-toggle"
-          @click="toggleReasoning"
+          @click="toggleReasoning(item.index)"
         >
           <span>查看思路</span>
           <el-icon
             class="toggle-icon"
-            :class="{ 'is-show': isShowReasoning }"
+            :class="{ 'is-show': isReasoningVisible(item.index) }"
           >
             <ArrowDown />
           </el-icon>
         </div>
         <!-- 推理内容 -->
         <div
-          v-if="isShowReasoning && message.reasoning_content"
+          v-if="isReasoningVisible(item.index) && item.data.reasoning_content"
           class="reasoning-content"
         >
-          {{ message.reasoning_content }}
+          {{ item.data.reasoning_content }}
         </div>
         <!-- 内容 -->
         <div class="message-content">
           <div
-            v-if="isLoading && index === currentMessages.length - 1 && !message.content"
+            v-if="isLoading && item.index === currentMessages.length - 1 && !item.data.content"
             class="loading-wrapper"
           >
             <el-icon class="is-loading"><Loading /></el-icon>
           </div>
           <div
             v-else
-            v-html="renderMarkdown(message.content)"
+            v-html="renderMarkdown(item.data.content)"
           ></div>
         </div>
         <!-- 操作按钮 -->
         <div
-          v-if="message.role === 'assistant' && !isLoading"
+          v-if="item.data.role === 'assistant' && !isLoading"
           class="message-actions"
         >
           <button
             class="action-btn"
             :data-tooltip="isCopied ? '已复制' : '复制'"
-            @click="handleMessageCopy(message.content)"
+            @click="handleMessageCopy(item.data.content)"
           >
             <img
               :src="isCopied ? successIcon : copyIcon"
@@ -64,7 +68,7 @@
             />
           </button>
           <button
-            v-if="index === activeChat.messages.length - 1"
+            v-if="item.index === activeChat.messages.length - 1"
             class="action-btn"
             data-tooltip="重新生成"
             @click="handleRegenerate"
@@ -87,11 +91,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch, computed } from 'vue'
+import { ref, nextTick, watch, computed, onBeforeUpdate, reactive } from 'vue'
 import { useChatsStore } from '@/stores/chats/chats'
 import { storeToRefs } from 'pinia'
 import { renderMarkdown } from '@/utils/markdown'
 import { ArrowDown, Loading } from '@element-plus/icons-vue'
+import { useVirtualList } from '@/hooks/useVirtualList'
+import type { Message } from '@/stores/chats/types'
 import copyIcon from '@/assets/copy.png'
 import successIcon from '@/assets/success.png'
 import regenerateIcon from '@/assets/refresh.png'
@@ -100,8 +106,17 @@ const chatsStore = useChatsStore()
 const { activeChat, activeChatId, isLoading, currentMessages } = storeToRefs(chatsStore)
 
 const scrollContainerRef = ref<HTMLDivElement | null>(null)
-const isShowReasoning = ref(false)
+const visibleReasonings = reactive(new Set<number>())
 const isCopied = ref(false)
+
+const { containerRef, visibleData, wrapperStyle, observeItem, getItemStyle, unObserveItem } =
+  useVirtualList<Message>(currentMessages, {
+    itemHeight: 120,
+    overscan: 5,
+    itemGap: 48,
+  })
+
+const itemRefs = ref<HTMLElement[]>([])
 
 const welcomeMessage = computed(() => {
   const currentHour = new Date().getHours()
@@ -110,8 +125,22 @@ const welcomeMessage = computed(() => {
   if (currentHour >= 9 && currentHour < 12) return '上午好'
   return '下午好'
 })
-function toggleReasoning() {
-  isShowReasoning.value = !isShowReasoning.value
+
+function observe(el: any) {
+  if (el) {
+    observeItem(el as HTMLElement)
+    itemRefs.value.push(el as HTMLElement)
+  }
+}
+function toggleReasoning(index: number) {
+  if (visibleReasonings.has(index)) {
+    visibleReasonings.delete(index)
+  } else {
+    visibleReasonings.add(index)
+  }
+}
+function isReasoningVisible(index: number) {
+  return visibleReasonings.has(index)
 }
 
 function scrollToBottom() {
@@ -175,6 +204,12 @@ async function handleRegenerate() {
 
 watch(activeChatId, scrollToBottom, { immediate: true })
 watch(() => currentMessages.value.length, scrollToBottom)
+onBeforeUpdate(() => {
+  itemRefs.value.forEach((item) => {
+    unObserveItem(item)
+  })
+  itemRefs.value = []
+})
 </script>
 
 <style scoped lang="scss">
@@ -184,18 +219,16 @@ watch(() => currentMessages.value.length, scrollToBottom)
   padding: 24px;
 
   .message-list {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 48px;
+    position: relative;
     max-width: 800px;
     width: 100%;
     margin: 0 auto;
 
     .message-item {
+      position: absolute;
       display: flex;
       flex-direction: column;
-      max-width: 80%;
+      width: 100%;
 
       .reasoning-toggle {
         display: flex;
@@ -235,6 +268,10 @@ watch(() => currentMessages.value.length, scrollToBottom)
         line-height: 1.6;
         word-break: break-word;
         overflow: hidden;
+        position: relative;
+        z-index: 1;
+        max-width: 80%;
+        width: fit-content;
 
         .content-chunks-wrapper {
           display: inline;
@@ -282,7 +319,7 @@ watch(() => currentMessages.value.length, scrollToBottom)
           margin: 0.5rem 0;
           border: 1px solid var(--code-border);
           border-radius: 0.5rem;
-          overflow: visible;
+          overflow: hidden; /* 改为hidden防止内容溢出影响布局 */
           width: 100%;
 
           > pre {
@@ -380,6 +417,8 @@ watch(() => currentMessages.value.length, scrollToBottom)
         gap: 0.5rem;
         margin-top: 0.5rem;
         padding-left: 0.5rem;
+        position: relative;
+        z-index: 1;
 
         .action-btn {
           width: 1.5rem;
@@ -435,7 +474,7 @@ watch(() => currentMessages.value.length, scrollToBottom)
     }
 
     .message-from-user {
-      align-self: flex-end;
+      align-items: flex-end;
       .message-content {
         background-color: #e9eef6;
         color: var(--text-color);
@@ -445,7 +484,7 @@ watch(() => currentMessages.value.length, scrollToBottom)
     }
 
     .message-from-assistant {
-      align-self: flex-start;
+      align-items: flex-start;
       .message-content {
         color: var(--text-color);
         white-space: pre-wrap;

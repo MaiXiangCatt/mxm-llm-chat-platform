@@ -2,7 +2,8 @@
   <div class="chat-view">
     <Sidebar></Sidebar>
     <div class="main-content">
-      <message-list></message-list>
+      <!-- <message-list></message-list> -->
+      <MessageListV2></MessageListV2>
       <chat-input></chat-input>
     </div>
   </div>
@@ -12,6 +13,7 @@
 import Sidebar from '@/components/layout/Sidebar.vue'
 import ChatInput from '@/components/Chat/ChatInput.vue'
 import MessageList from '@/components/Chat/MessageList.vue'
+import MessageListV2 from '@/components/Chat/MessageListV2.vue'
 </script>
 
 <style scoped lang="scss">

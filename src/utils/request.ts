@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { useSettingStore } from '@/stores/setting/setting'
 import { ElMessage } from 'element-plus'
-import type { Axios, AxiosInstance, AxiosRequestConfig } from 'axios'
+import type { AxiosInstance, AxiosRequestConfig } from 'axios'
 
 export interface CustomAxiosInstance extends AxiosInstance {
   get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
